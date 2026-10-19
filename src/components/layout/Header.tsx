@@ -99,6 +99,15 @@ export function Header({ onOpenAddTask, onSearchChange }: HeaderProps) {
             <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#C6FF5E]" />
           </button>
 
+          {/* Profile Shortcut */}
+          <a
+            href="/settings"
+            className="w-8 h-8 rounded-lg bg-[#171C16] border border-[#232A21] hover:border-[#C6FF5E] flex items-center justify-center text-xs font-mono font-bold text-[#C6FF5E] transition-colors"
+            title={`Signed in as ${profile.display_name}`}
+          >
+            {profile.display_name ? profile.display_name.charAt(0).toUpperCase() : "U"}
+          </a>
+
           {/* New Task Action Button */}
           <button
             type="button"

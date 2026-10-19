@@ -7,7 +7,9 @@ import { localStore } from "@/lib/storage/localStore";
 import { Profile, TaskCategory } from "@/types";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { requestNotificationPermission } from "@/lib/notifications/reminderManager";
-import { Check, Settings, Bell, Database, Sparkles, Shield, User, Clock } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
+import { Check, Settings, Bell, Database, Sparkles, Shield, User, Clock, LogOut } from "lucide-react";
 
 const CATEGORIES: TaskCategory[] = [
   "DSA",
@@ -31,6 +33,8 @@ const TIMEZONES = [
 ];
 
 export default function SettingsPage() {
+  const router = useRouter();
+  const { user, signOut } = useAuth();
   const [profile, setProfile] = useState<Profile>(() => localStore.getProfile());
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [notificationState, setNotificationState] = useState<string>("default");
@@ -233,6 +237,47 @@ export default function SettingsPage() {
             </button>
           </div>
         </form>
+
+        {/* Account & Session Management */}
+        <div className="p-6 rounded-2xl bg-[#0E110E] border border-[#232A21] space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-[#232A21]">
+            <div className="flex items-center gap-2">
+              <User className="w-4 h-4 text-[#C6FF5E]" />
+              <h2 className="text-sm font-bold text-[#F1F3EC]">Active Session & Identity</h2>
+            </div>
+            {user?.app_metadata?.provider === "google" && (
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[rgba(66,133,244,0.15)] text-[#4285F4] border border-[rgba(66,133,244,0.3)]">
+                Google Account Verified
+              </span>
+            )}
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-[#111410] border border-[#232A21]">
+            <div>
+              <div className="text-sm font-bold text-[#F1F3EC]">
+                {user?.user_metadata?.full_name || profile.display_name}
+              </div>
+              <div className="text-xs font-mono text-[#92988D] mt-0.5">
+                {user?.email || "developer@pulse.local"}
+              </div>
+              <div className="text-[10px] font-mono text-[#5E645A] mt-1">
+                Auth Method: {user?.app_metadata?.provider ? user.app_metadata.provider.toUpperCase() : "EMAIL/WORKSPACE"}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={async () => {
+                await signOut();
+                router.push("/login");
+              }}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgba(255,94,94,0.12)] border border-[rgba(255,94,94,0.3)] text-xs font-mono text-[#FF5E5E] hover:bg-[#FF5E5E] hover:text-black transition-all self-start sm:self-auto"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Sign Out of Pulse</span>
+            </button>
+          </div>
+        </div>
 
         {/* System Diagnostics Panel */}
         <div className="p-6 rounded-2xl bg-[#0E110E] border border-[#232A21] space-y-4">
