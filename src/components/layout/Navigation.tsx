@@ -9,17 +9,22 @@ import {
   CalendarDays,
   BarChart3,
   Target,
-  Sparkles,
   Settings,
 } from "lucide-react";
 
-const NAV_ITEMS = [
+interface NavItem {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  badge?: string;
+}
+
+const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/tasks", label: "Tasks", icon: CheckSquare },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/goals", label: "Goals", icon: Target },
-  { href: "/ai-coach", label: "AI Coach", icon: Sparkles, badge: "Gemini" },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -115,13 +120,10 @@ export function Navigation() {
             PULSE
           </span>
         </Link>
-        <Link
-          href="/ai-coach"
-          className="flex items-center gap-1.5 text-xs font-mono px-2.5 py-1 rounded bg-[rgba(198,255,94,0.1)] text-[#C6FF5E] border border-[rgba(198,255,94,0.2)]"
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>AI Coach</span>
-        </Link>
+        <div className="flex items-center gap-1.5 text-[10px] font-mono px-2 py-0.5 rounded bg-[#171C16] border border-[#232A21] text-[#C6FF5E]">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#C6FF5E] animate-pulse" />
+          <span>v2.0</span>
+        </div>
       </header>
 
       {/* Mobile Bottom Navigation Bar */}
@@ -129,14 +131,14 @@ export function Navigation() {
         className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#090B09] border-t border-[#232A21] px-2 py-1.5 flex items-center justify-around select-none backdrop-blur-md"
         aria-label="Mobile Navigation"
       >
-        {NAV_ITEMS.slice(0, 5).map((item) => {
+        {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center py-1 px-3 rounded-lg text-[10px] font-mono transition-colors ${
+              className={`flex flex-col items-center py-1 px-2.5 rounded-lg text-[10px] font-mono transition-colors ${
                 isActive ? "text-[#C6FF5E]" : "text-[#92988D] hover:text-[#F1F3EC]"
               }`}
             >
@@ -145,15 +147,6 @@ export function Navigation() {
             </Link>
           );
         })}
-        <Link
-          href="/settings"
-          className={`flex flex-col items-center py-1 px-3 rounded-lg text-[10px] font-mono transition-colors ${
-            pathname === "/settings" ? "text-[#C6FF5E]" : "text-[#92988D] hover:text-[#F1F3EC]"
-          }`}
-        >
-          <Settings className="w-4 h-4 mb-1" />
-          <span>Settings</span>
-        </Link>
       </nav>
     </>
   );
