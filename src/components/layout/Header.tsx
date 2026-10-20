@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 import { formatEditorialDate } from "@/lib/dates/timezone";
 import { localStore } from "@/lib/storage/localStore";
-import { Plus, Bell, Search } from "lucide-react";
+import { Plus, Bell, Search, LogOut } from "lucide-react";
 
 interface HeaderProps {
   onOpenAddTask: () => void;
@@ -11,11 +13,24 @@ interface HeaderProps {
 }
 
 export function Header({ onOpenAddTask, onSearchChange }: HeaderProps) {
+  const router = useRouter();
+  const { signOut } = useAuth();
+  const [signingOut, setSigningOut] = useState(false);
   const [currentTime, setCurrentTime] = useState("");
   const [profile, setProfile] = useState(() => localStore.getProfile());
   const [greeting, setGreeting] = useState("");
   const [searchVal, setSearchVal] = useState("");
   const [editorialDate, setEditorialDate] = useState("");
+
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    try {
+      await signOut();
+      router.push("/login");
+    } finally {
+      setSigningOut(false);
+    }
+  };
 
   useEffect(() => {
     setEditorialDate(formatEditorialDate());
@@ -107,6 +122,21 @@ export function Header({ onOpenAddTask, onSearchChange }: HeaderProps) {
           >
             {profile.display_name ? profile.display_name.charAt(0).toUpperCase() : "U"}
           </a>
+
+          {/* Sign Out Button */}
+          <button
+            type="button"
+            onClick={handleSignOut}
+            disabled={signingOut}
+            className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg bg-[#111410] border border-[#232A21] hover:border-[rgba(255,94,94,0.4)] hover:bg-[rgba(255,94,94,0.08)] text-[#92988D] hover:text-[#FF5E5E] transition-all disabled:opacity-50"
+            title="Sign Out"
+            id="navbar-signout-btn"
+          >
+            <LogOut className="w-4 h-4" />
+            <span className="hidden sm:inline text-xs font-mono font-medium">
+              {signingOut ? "Signing out..." : "Sign Out"}
+            </span>
+          </button>
 
           {/* New Task Action Button */}
           <button

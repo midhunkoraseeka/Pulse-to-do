@@ -5,9 +5,13 @@ import { isSupabaseConfigured, createClient } from "@/lib/supabase/client";
 import { localStore } from "@/lib/storage/localStore";
 import { User } from "@supabase/supabase-js";
 
+const AUTH_NOT_CONFIGURED_MESSAGE =
+  "Authentication is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY to .env.local and restart the dev server.";
+
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Nothing to load when there is no auth backend
+  const [loading, setLoading] = useState(isSupabaseConfigured);
 
   // Initialize and listen to auth state changes
   useEffect(() => {
@@ -47,20 +51,12 @@ export function useAuth() {
 
         return () => subscription.unsubscribe();
       }
-    }
-
-    // Local fallback check
-    if (typeof window !== "undefined") {
-      const localAuth = localStorage.getItem("pulse_simulated_user");
-      if (localAuth) {
-        try {
-          setUser(JSON.parse(localAuth));
-        } catch {
-          // ignore
-        }
+    } else {
+      // No auth backend: never treat a locally stored user as signed in
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("pulse_simulated_user");
       }
     }
-    setLoading(false);
   }, []);
 
   // Sign In with Google OAuth
@@ -81,28 +77,14 @@ export function useAuth() {
         if (error) {
           throw error;
         }
+        if (data?.url) {
+          window.location.href = data.url;
+        }
         return { data };
       }
     }
 
-    // Local simulated Google Sign In fallback when keys are not yet configured
-    const simulatedGoogleUser = {
-      id: "google_dev_user",
-      email: "alex.rivera.dev@gmail.com",
-      user_metadata: {
-        full_name: "Alex Rivera",
-        avatar_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80",
-        provider: "google",
-      },
-      app_metadata: { provider: "google" },
-      created_at: new Date().toISOString(),
-    } as unknown as User;
-
-    localStorage.setItem("pulse_simulated_user", JSON.stringify(simulatedGoogleUser));
-    setUser(simulatedGoogleUser);
-    const profile = localStore.getProfile();
-    localStore.saveProfile({ ...profile, display_name: "Alex Rivera" });
-    return { data: { user: simulatedGoogleUser } };
+    throw new Error(AUTH_NOT_CONFIGURED_MESSAGE);
   }, []);
 
   // Sign In with Email & Password
@@ -115,27 +97,21 @@ export function useAuth() {
           password,
         });
         if (error) throw error;
+        if (data.user) {
+          setUser(data.user);
+          const profile = localStore.getProfile();
+          const displayName =
+            data.user.user_metadata?.full_name ||
+            data.user.user_metadata?.display_name ||
+            email.split("@")[0] ||
+            profile.display_name;
+          localStore.saveProfile({ ...profile, display_name: displayName });
+        }
         return { data };
       }
     }
 
-    // Local simulated email sign in
-    const simulatedUser = {
-      id: `local_user_${Date.now()}`,
-      email,
-      user_metadata: {
-        full_name: email.split("@")[0],
-        provider: "email",
-      },
-      app_metadata: { provider: "email" },
-      created_at: new Date().toISOString(),
-    } as unknown as User;
-
-    localStorage.setItem("pulse_simulated_user", JSON.stringify(simulatedUser));
-    setUser(simulatedUser);
-    const profile = localStore.getProfile();
-    localStore.saveProfile({ ...profile, display_name: email.split("@")[0] });
-    return { data: { user: simulatedUser } };
+    throw new Error(AUTH_NOT_CONFIGURED_MESSAGE);
   }, []);
 
   // Sign Up with Email & Password
@@ -148,6 +124,7 @@ export function useAuth() {
             email,
             password,
             options: {
+              emailRedirectTo: `${window.location.origin}/auth/callback`,
               data: {
                 display_name: displayName,
                 full_name: displayName,
@@ -155,28 +132,16 @@ export function useAuth() {
             },
           });
           if (error) throw error;
+          if (data.user && data.session) {
+            setUser(data.user);
+            const profile = localStore.getProfile();
+            localStore.saveProfile({ ...profile, display_name: displayName });
+          }
           return { data };
         }
       }
 
-      // Local simulated signup
-      const simulatedUser = {
-        id: `local_user_${Date.now()}`,
-        email,
-        user_metadata: {
-          full_name: displayName,
-          display_name: displayName,
-          provider: "email",
-        },
-        app_metadata: { provider: "email" },
-        created_at: new Date().toISOString(),
-      } as unknown as User;
-
-      localStorage.setItem("pulse_simulated_user", JSON.stringify(simulatedUser));
-      setUser(simulatedUser);
-      const profile = localStore.getProfile();
-      localStore.saveProfile({ ...profile, display_name: displayName });
-      return { data: { user: simulatedUser } };
+      throw new Error(AUTH_NOT_CONFIGURED_MESSAGE);
     },
     []
   );
@@ -191,6 +156,8 @@ export function useAuth() {
     }
     localStorage.removeItem("pulse_simulated_user");
     setUser(null);
+    const profile = localStore.getProfile();
+    localStore.saveProfile({ ...profile, display_name: "Developer" });
   }, []);
 
   return {

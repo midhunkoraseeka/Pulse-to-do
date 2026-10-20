@@ -121,45 +121,57 @@ ALTER TABLE public.focus_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notification_preferences ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies: Profiles
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
 CREATE POLICY "Users can view own profile" ON public.profiles
   FOR SELECT USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile" ON public.profiles
   FOR UPDATE USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
 CREATE POLICY "Users can insert own profile" ON public.profiles
   FOR INSERT WITH CHECK (auth.uid() = id);
 
 -- RLS Policies: Recurrence Rules
+DROP POLICY IF EXISTS "Users can manage own recurrence rules" ON public.recurrence_rules;
 CREATE POLICY "Users can manage own recurrence rules" ON public.recurrence_rules
   FOR ALL USING (auth.uid() = user_id);
 
 -- RLS Policies: Tasks
+DROP POLICY IF EXISTS "Users can view own tasks" ON public.tasks;
 CREATE POLICY "Users can view own tasks" ON public.tasks
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own tasks" ON public.tasks;
 CREATE POLICY "Users can insert own tasks" ON public.tasks
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own tasks" ON public.tasks;
 CREATE POLICY "Users can update own tasks" ON public.tasks
   FOR UPDATE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own tasks" ON public.tasks;
 CREATE POLICY "Users can delete own tasks" ON public.tasks
   FOR DELETE USING (auth.uid() = user_id);
 
 -- RLS Policies: Task Occurrences
+DROP POLICY IF EXISTS "Users can manage own occurrences" ON public.task_occurrences;
 CREATE POLICY "Users can manage own occurrences" ON public.task_occurrences
   FOR ALL USING (auth.uid() = user_id);
 
 -- RLS Policies: Goals
+DROP POLICY IF EXISTS "Users can manage own goals" ON public.goals;
 CREATE POLICY "Users can manage own goals" ON public.goals
   FOR ALL USING (auth.uid() = user_id);
 
 -- RLS Policies: Focus Sessions
+DROP POLICY IF EXISTS "Users can manage own focus sessions" ON public.focus_sessions;
 CREATE POLICY "Users can manage own focus sessions" ON public.focus_sessions
   FOR ALL USING (auth.uid() = user_id);
 
 -- RLS Policies: Notification Preferences
+DROP POLICY IF EXISTS "Users can manage own notification preferences" ON public.notification_preferences;
 CREATE POLICY "Users can manage own notification preferences" ON public.notification_preferences
   FOR ALL USING (auth.uid() = user_id);
 
@@ -170,7 +182,12 @@ BEGIN
   INSERT INTO public.profiles (id, display_name, timezone)
   VALUES (
     NEW.id,
-    COALESCE(NEW.raw_user_meta_data->>'display_name', split_part(NEW.email, '@', 1)),
+    COALESCE(
+      NEW.raw_user_meta_data->>'display_name',
+      NEW.raw_user_meta_data->>'full_name',
+      split_part(NEW.email, '@', 1),
+      'User'
+    ),
     COALESCE(NEW.raw_user_meta_data->>'timezone', 'UTC')
   )
   ON CONFLICT (id) DO NOTHING;
@@ -184,9 +201,40 @@ BEGIN
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Table access for signed-in users (RLS above still limits them to their own rows)
+GRANT SELECT, INSERT, UPDATE, DELETE ON
+  public.profiles,
+  public.recurrence_rules,
+  public.goals,
+  public.tasks,
+  public.task_occurrences,
+  public.focus_sessions,
+  public.notification_preferences
+TO authenticated;
+
+-- Backfill rows for users who signed up before this migration ran
+INSERT INTO public.profiles (id, display_name)
+SELECT
+  u.id,
+  COALESCE(
+    u.raw_user_meta_data->>'display_name',
+    u.raw_user_meta_data->>'full_name',
+    split_part(u.email, '@', 1),
+    'User'
+  )
+FROM auth.users u
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.notification_preferences (user_id)
+SELECT u.id FROM auth.users u
+ON CONFLICT (user_id) DO NOTHING;
+
+-- Make the new tables visible to the Supabase API immediately
+NOTIFY pgrst, 'reload schema';

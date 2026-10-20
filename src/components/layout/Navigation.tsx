@@ -1,8 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 import {
   LayoutDashboard,
   CheckSquare,
@@ -10,6 +11,7 @@ import {
   BarChart3,
   Target,
   Settings,
+  LogOut,
 } from "lucide-react";
 
 interface NavItem {
@@ -30,6 +32,19 @@ const NAV_ITEMS: NavItem[] = [
 
 export function Navigation() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { signOut } = useAuth();
+  const [signingOut, setSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    try {
+      await signOut();
+      router.push("/login");
+    } finally {
+      setSigningOut(false);
+    }
+  };
 
   return (
     <>
@@ -95,7 +110,7 @@ export function Navigation() {
         </nav>
 
         {/* Focus Mode Quick Link / Status Footer */}
-        <div className="p-4 border-t border-[#232A21] bg-[#090B09]">
+        <div className="p-4 border-t border-[#232A21] bg-[#090B09] space-y-2">
           <div className="p-3 rounded-xl bg-[#111410] border border-[#232A21] flex items-center justify-between">
             <div>
               <div className="text-[10px] font-mono text-[#92988D] uppercase tracking-wider">
@@ -107,6 +122,17 @@ export function Navigation() {
               </div>
             </div>
           </div>
+
+          <button
+            type="button"
+            onClick={handleSignOut}
+            disabled={signingOut}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-mono text-[#92988D] hover:text-[#FF5E5E] bg-[#111410] border border-[#232A21] hover:border-[rgba(255,94,94,0.3)] hover:bg-[rgba(255,94,94,0.08)] transition-all active:scale-95 disabled:opacity-50"
+            id="sidebar-signout-btn"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>{signingOut ? "Signing out..." : "Sign Out"}</span>
+          </button>
         </div>
       </aside>
 
@@ -120,9 +146,21 @@ export function Navigation() {
             PULSE
           </span>
         </Link>
-        <div className="flex items-center gap-1.5 text-[10px] font-mono px-2 py-0.5 rounded bg-[#171C16] border border-[#232A21] text-[#C6FF5E]">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#C6FF5E] animate-pulse" />
-          <span>v2.0</span>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 text-[10px] font-mono px-2 py-0.5 rounded bg-[#171C16] border border-[#232A21] text-[#C6FF5E]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#C6FF5E] animate-pulse" />
+            <span>v2.0</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleSignOut}
+            disabled={signingOut}
+            className="p-1.5 rounded-lg bg-[#111410] border border-[#232A21] text-[#92988D] hover:text-[#FF5E5E] hover:border-[rgba(255,94,94,0.3)] transition-colors"
+            title="Sign Out"
+            id="mobile-signout-btn"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+          </button>
         </div>
       </header>
 

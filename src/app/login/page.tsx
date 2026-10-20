@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,15 +16,22 @@ export default function LoginPage() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const urlError = params.get("error");
+      if (urlError) {
+        setErrorMsg(decodeURIComponent(urlError));
+      }
+    }
+  }, []);
+
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     setErrorMsg(null);
     try {
+      // Redirects the browser to Google; the session is created in /auth/callback
       await signInWithGoogle();
-      // If running local simulation or immediate return, push to dashboard
-      if (!isConfigured) {
-        router.push("/dashboard");
-      }
     } catch (err: unknown) {
       console.error(err);
       const msg = err instanceof Error ? err.message : "Google authentication failed";
@@ -146,16 +153,18 @@ export default function LoginPage() {
           </Link>
         </div>
 
-        {/* Local Fast-Pass */}
-        <div className="pt-2 text-center">
-          <button
-            type="button"
-            onClick={() => router.push("/dashboard")}
-            className="text-[11px] font-mono text-[#5E645A] hover:text-[#92988D] underline"
-          >
-            Explore workspace in local preview mode →
-          </button>
-        </div>
+        {/* Local preview is only available when no auth backend is configured */}
+        {!isConfigured && (
+          <div className="pt-2 text-center">
+            <button
+              type="button"
+              onClick={() => router.push("/dashboard")}
+              className="text-[11px] font-mono text-[#5E645A] hover:text-[#92988D] underline"
+            >
+              Explore workspace in local preview mode →
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

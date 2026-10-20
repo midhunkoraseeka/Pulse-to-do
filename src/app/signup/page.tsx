@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { GoogleIcon } from "@/components/ui/GoogleIcon";
-import { ArrowRight, Lock, Mail, User, AlertCircle } from "lucide-react";
+import { ArrowRight, Lock, Mail, User, AlertCircle, CheckCircle2 } from "lucide-react";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -16,15 +16,15 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const handleGoogleSignUp = async () => {
     setGoogleLoading(true);
     setErrorMsg(null);
+    setSuccessMsg(null);
     try {
+      // Redirects the browser to Google; the session is created in /auth/callback
       await signInWithGoogle();
-      if (!isConfigured) {
-        router.push("/dashboard");
-      }
     } catch (err: unknown) {
       console.error(err);
       const msg = err instanceof Error ? err.message : "Google authentication failed";
@@ -37,9 +37,16 @@ export default function SignupPage() {
     e.preventDefault();
     setLoading(true);
     setErrorMsg(null);
+    setSuccessMsg(null);
 
     try {
-      await signUpWithEmail(email, password, displayName);
+      const res = await signUpWithEmail(email, password, displayName);
+      const data = res?.data as { user?: unknown; session?: unknown } | undefined;
+      if (data?.user && !data?.session && isConfigured) {
+        setSuccessMsg("Account created! Please check your email inbox to verify your account.");
+        setLoading(false);
+        return;
+      }
       router.push("/dashboard");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to create account";
@@ -68,6 +75,13 @@ export default function SignupPage() {
           <div className="p-3 rounded-lg bg-[rgba(255,94,94,0.1)] border border-[rgba(255,94,94,0.3)] text-xs text-[#FF5E5E] flex items-center gap-2">
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
             <span>{errorMsg}</span>
+          </div>
+        )}
+
+        {successMsg && (
+          <div className="p-3 rounded-lg bg-[rgba(198,255,94,0.1)] border border-[rgba(198,255,94,0.3)] text-xs text-[#C6FF5E] flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+            <span>{successMsg}</span>
           </div>
         )}
 
